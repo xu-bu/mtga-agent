@@ -2,6 +2,7 @@ import os
 from agent.state import AgentState
 from agent.prompts import OBSERVE_PROMPT, THINK_PROMPT, ACT_PROMPT, CHECK_PROMPT
 from langchain_google_genai import ChatGoogleGenerativeAI
+from tools.rag import get_card_data
 
 llm = ChatGoogleGenerativeAI(
     model=os.getenv("MODEL_NAME"),
@@ -15,9 +16,15 @@ def observe(state: AgentState) -> dict:
     response = llm.invoke([{"role": "user", "content": prompt}])
     observation = response.content
     print(f"\n[OBSERVE — iteration {state['iteration']}]\n{observation}")
+    
+    # Fetch ground-truth card data based on battlefield description
+    card_context = get_card_data(state["battlefield"])
+    print(f"\n[RAG — iteration {state['iteration']}]\nRetrieved data for {len(card_context.split('---'))} cards/sections.")
+
     return {
         "observations": state["observations"] + [observation],
         "messages": [{"role": "assistant", "content": observation}],
+        "card_context": card_context
     }
 
 def think(state: AgentState) -> dict:
@@ -26,6 +33,7 @@ def think(state: AgentState) -> dict:
     prompt = THINK_PROMPT.format(
         battlefield=state["battlefield"],
         observation=latest_obs,
+        card_context=state.get("card_context", "No card data retrieved."),
         iteration=state["iteration"],
     )
     response = llm.invoke([{"role": "user", "content": prompt}])

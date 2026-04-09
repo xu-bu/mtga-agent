@@ -30,6 +30,7 @@ def main():
         "actions_taken": [],
         "iteration": 1,
         "final_recommendation": "",
+        "card_context": "",
         "done": False,
     }
 

@@ -14,4 +14,5 @@ class AgentState(TypedDict):
 
     # Output
     final_recommendation: str   # populated when the loop exits
+    card_context: str           # retrieved card data and rules
     done: bool                  # flag that tells LangGraph to exit the loop

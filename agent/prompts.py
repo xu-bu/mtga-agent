@@ -26,6 +26,9 @@ Battlefield state:
 Observations so far:
 {observation}
 
+Retrieved Card Data & Rules:
+{card_context}
+
 Your task: reason deeply about the strategic situation.
 Think through:
 - What are your win conditions right now?
