@@ -1,41 +1,42 @@
 import os
 from agent.state import AgentState
-from agent.prompts import OBSERVE_PROMPT, THINK_PROMPT, ACT_PROMPT, CHECK_PROMPT
+from agent.prompts import observe_prompt, think_prompt, act_prompt, check_prompt
 from langchain_google_genai import ChatGoogleGenerativeAI
 from tools.rag import get_card_data
 
 llm = ChatGoogleGenerativeAI(
     model=os.getenv("MODEL_NAME"),
     google_api_key=os.getenv("MODEL_API_KEY"),
-    temperature=0
+    temperature=0,
 )
+
 
 def observe(state: AgentState) -> dict:
     """Extract structured observations from the battlefield description."""
-    prompt = OBSERVE_PROMPT.format(battlefield=state["battlefield"])
+    prompt = observe_prompt(state)
     response = llm.invoke([{"role": "user", "content": prompt}])
     observation = response.content
     print(f"\n[OBSERVE — iteration {state['iteration']}]\n{observation}")
-    
+
     # Fetch ground-truth card data based on battlefield description
-    card_context = get_card_data(state["battlefield"])
-    print(f"\n[RAG — iteration {state['iteration']}]\nRetrieved data for {len(card_context.split('---'))} cards/sections.")
+    card_context = get_card_data(
+        state["your_battlefield"] + " " + state["opponent_battlefield"]
+    )
+    print(
+        f"\n[RAG — iteration {state['iteration']}]\nRetrieved data for {len(card_context.split('---'))} cards/sections."
+    )
 
     return {
         "observations": state["observations"] + [observation],
         "messages": [{"role": "assistant", "content": observation}],
-        "card_context": card_context
+        "card_context": card_context,
     }
+
 
 def think(state: AgentState) -> dict:
     """Reason over the observations and produce a plan."""
     latest_obs = state["observations"][-1]
-    prompt = THINK_PROMPT.format(
-        battlefield=state["battlefield"],
-        observation=latest_obs,
-        card_context=state.get("card_context", "No card data retrieved."),
-        iteration=state["iteration"],
-    )
+    prompt = think_prompt(state, latest_obs)
     response = llm.invoke([{"role": "user", "content": prompt}])
     thought = response.content
     print(f"\n[THINK — iteration {state['iteration']}]\n{thought}")
@@ -44,10 +45,11 @@ def think(state: AgentState) -> dict:
         "messages": [{"role": "assistant", "content": thought}],
     }
 
+
 def act(state: AgentState) -> dict:
     """Decide on a concrete action based on current reasoning."""
     latest_thought = state["thoughts"][-1]
-    prompt = ACT_PROMPT.format(thought=latest_thought, iteration=state["iteration"])
+    prompt = act_prompt(state, latest_thought)
     response = llm.invoke([{"role": "user", "content": prompt}])
     action = response.content
     print(f"\n[ACT — iteration {state['iteration']}]\n{action}")
@@ -56,10 +58,11 @@ def act(state: AgentState) -> dict:
         "messages": [{"role": "assistant", "content": action}],
     }
 
+
 def check(state: AgentState) -> dict:
     """Decide: are we done, or do we need another pass?"""
     latest_action = state["actions_taken"][-1]
-    MAX_ITERATIONS = 1
+    MAX_ITERATIONS = 3
 
     if state["iteration"] >= MAX_ITERATIONS:
         # Force exit — safety limit
@@ -67,18 +70,28 @@ def check(state: AgentState) -> dict:
         recommendation = latest_action
         print(f"\n[CHECK] Max iterations reached. Forcing exit.")
     else:
-        prompt = CHECK_PROMPT.format(
-            action=latest_action,
-            iteration=state["iteration"],
-        )
+        prompt = check_prompt(state, latest_action)
         response = llm.invoke([{"role": "user", "content": prompt}])
-        content = response.content.strip().lower()
-        done = content.startswith("done")
+        raw_content = response.content
+        if isinstance(raw_content, str):
+            content_text = raw_content
+        else:
+            content_text = " ".join(
+                (
+                    item["content"]
+                    if isinstance(item, dict) and "content" in item
+                    else str(item)
+                )
+                for item in raw_content
+            )
+        done = content_text.strip().lower().startswith("done")
         recommendation = latest_action if done else ""
         print(f"\n[CHECK — iteration {state['iteration']}] done={done}")
 
     return {
         "done": done,
-        "final_recommendation": recommendation if done else state.get("final_recommendation", ""),
+        "final_recommendation": (
+            recommendation if done else state.get("final_recommendation", "")
+        ),
         "iteration": state["iteration"] + 1,
     }

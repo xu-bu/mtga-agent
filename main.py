@@ -1,4 +1,5 @@
 import os
+from typing import cast
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,32 +8,43 @@ MODEL_API_KEY = os.getenv("MODEL_API_KEY")
 from agent.graph import build_graph
 from agent.state import AgentState
 
-EXAMPLE_BATTLEFIELD = """
-Turn 5, my main phase. My turn.
 
-My hand: Lightning Bolt, Counterspell, Island (land)
-Opponent's hand: 1
-My battlefield: 2x Island, 1x Mountain (untapped), Goblin Guide (2/2 haste), Snapcaster Mage (2/1)
-Opponent's battlefield: Tarmogoyf (4/5), 1x Forest (untapped)
-My life total: 12
-Opponent's life total: 6
-Graveyard (mine): 2 instants, 1 sorcery
-"""
+EXAMPLE_STATE = {
+    "your_hand": "Lightning Bolt, Counterspell, Island (land)",
+    "opponent_hand": "1 unknown card",
+    "your_battlefield": "2x Island (untapped), 1x Mountain (untapped), Goblin Guide (2/2 haste), Snapcaster Mage (2/1)",
+    "opponent_battlefield": "Tarmogoyf (4/5), 1x Forest (untapped)",
+    "your_graveyard": "2 instants, 1 sorcery",
+    "opponent_graveyard": "1 creature",
+    "your_exile": "none",
+    "opponent_exile": "none",
+    "your_mana_pool": "none",
+    "opponent_mana_pool": "none",
+    "phase": "main phase",
+    "turn_player": "me",
+    "stack": "none",
+    "life_total": "12",
+    "opponent_life_total": "6",
+}
+
 
 def main():
     graph = build_graph()
 
-    initial_state: AgentState = {
-        "battlefield": EXAMPLE_BATTLEFIELD,
-        "messages": [],
-        "observations": [],
-        "thoughts": [],
-        "actions_taken": [],
-        "iteration": 1,
-        "final_recommendation": "",
-        "card_context": "",
-        "done": False,
-    }
+    initial_state: AgentState = cast(
+        AgentState,
+        {
+            **EXAMPLE_STATE,
+            "messages": [],
+            "observations": [],
+            "thoughts": [],
+            "actions_taken": [],
+            "iteration": 1,
+            "final_recommendation": "",
+            "card_context": "",
+            "done": False,
+        },
+    )
 
     print("=" * 60)
     print("MTGA ADVISOR — AGENT LOOP")
@@ -45,6 +57,7 @@ def main():
     print("=" * 60)
     print(final_state["final_recommendation"])
     print(f"\nCompleted in {final_state['iteration'] - 1} iteration(s).")
+
 
 if __name__ == "__main__":
     main()

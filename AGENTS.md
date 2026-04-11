@@ -29,7 +29,7 @@ Nothing more. No RAG integration yet. No real card database. Just the loop worki
 mtga-advisor/
 ├── AGENTS.md               ← this file
 ├── requirements.txt
-├── .env                    ← OPENAI_API_KEY or ANTHROPIC_API_KEY
+├── .env
 ├── agent/
 │   ├── __init__.py
 │   ├── graph.py            ← LangGraph graph definition
@@ -72,7 +72,21 @@ from langgraph.graph.message import add_messages
 
 class AgentState(TypedDict):
     # Input
-    battlefield: str            # raw battlefield description from the user
+    your_hand: str              # your hand contents
+    opponent_hand: str          # opponent hand information (count or known cards)
+    your_battlefield: str       # permanents you control
+    opponent_battlefield: str   # permanents opponent controls
+    your_graveyard: str         # your graveyard contents
+    opponent_graveyard: str     # opponent graveyard contents
+    your_exile: str             # cards you have exiled
+    opponent_exile: str         # cards opponent has exiled
+    your_mana_pool: str         # your available mana this turn
+    opponent_mana_pool: str     # opponent's available mana this turn
+    phase: str                  # current phase of the turn
+    turn_player: str            # whose turn it is
+    stack: str                  # any relevant stack state
+    life_total: str             # your life total
+    opponent_life_total: str    # opponent life total
 
     # Loop internals
     messages: Annotated[list, add_messages]  # full conversation with the LLM
