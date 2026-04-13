@@ -1,17 +1,7 @@
 import os
-
-# Unset proxy environment variables to avoid validation errors with socks proxies
-os.environ.pop("HTTP_PROXY", None)
-os.environ.pop("HTTPS_PROXY", None)
-os.environ.pop("http_proxy", None)
-os.environ.pop("https_proxy", None)
-os.environ.pop("ALL_PROXY", None)
-os.environ.pop("all_proxy", None)
-
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from pydantic import SecretStr
+from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
 
@@ -20,20 +10,21 @@ QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "mtg_cards")
 MODEL_API_KEY = os.getenv("MODEL_API_KEY")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-004")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "Qwen/Qwen3-Embedding-8B")
+TOP_K = int(os.getenv("RAG_TOP_K", "100"))
 
 # Clients
-embeddings = GoogleGenerativeAIEmbeddings(
-    model=EMBED_MODEL,
-    api_key=SecretStr(MODEL_API_KEY) if MODEL_API_KEY else None,
-    task_type="retrieval_query",
-    proxy=None,
-)
+embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
 
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
-def retrieve(query: str, top_k: int = 5) -> list[dict]:
+
+def retrieve(query: str, top_k: int | None = None) -> list[dict]:
     """Embed query and return top_k matching card payloads."""
+    card_count = len([item.strip() for item in query.split("|") if item.strip()])
+    if top_k is None:
+        top_k = min(card_count, TOP_K)
+
     # LangChain embeddings return a list of floats
     vector = embeddings.embed_query(query)
     hits = qdrant.query_points(
@@ -43,6 +34,7 @@ def retrieve(query: str, top_k: int = 5) -> list[dict]:
         with_payload=True,
     ).points
 
+    print(f"[RAG] estimated {card_count} cards, using top_k={top_k}")
     return [h.payload for h in hits if h.payload is not None]
 
 
@@ -78,11 +70,20 @@ def format_card_context(cards: list[dict]) -> str:
     return "\n\n---\n\n".join(sections)
 
 
-def get_card_data(query: str) -> str:
-    """One-stop shop for retrieval + formatting."""
-    try:
-        cards = retrieve(query)
-        return format_card_context(cards)
-    except Exception as e:
-        print(f"Error during RAG retrieval: {e}")
-        return f"Error retrieving card data: {e}"
+def get_card_data(query: str, top_k: int | None = None) -> str:
+    """Embed query, retrieve matching card payloads, and format them."""
+    card_count = len([item.strip() for item in query.split("|") if item.strip()])
+    if top_k is None:
+        top_k = min(card_count, TOP_K)
+
+    vector = embeddings.embed_query(query)
+    hits = qdrant.query_points(
+        collection_name=QDRANT_COLLECTION,
+        query=vector,
+        limit=top_k,
+        with_payload=True,
+    ).points
+
+    print(f"[RAG] get_card_data estimated {card_count} cards, using top_k={top_k}")
+    cards = [h.payload for h in hits if h.payload is not None]
+    return format_card_context(cards)

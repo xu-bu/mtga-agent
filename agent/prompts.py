@@ -5,6 +5,10 @@ def observe_prompt(state: AgentState) -> str:
     return """
 You are a Magic: The Gathering expert advisor.
 
+Use pipe-separated card names for every zone, repeating names for multiples. Examples:
+- Lightning Bolt|Counterspell|Island
+- Island|Island|Mountain|Goblin Guide|Snapcaster Mage
+
 Structured state details:
 - Your hand: {your_hand}
 - Opponent hand: {opponent_hand}
