@@ -1,3 +1,3 @@
-from tools.rag import get_card_data
+from tools.rag import retrieve
 
-print(get_card_data(["Snapcaster Mage"]))
+print(retrieve(["Mine Security"]))

@@ -5,10 +5,6 @@ def observe_prompt(state: AgentState) -> str:
     return """
 You are a Magic: The Gathering expert advisor.
 
-Use pipe-separated card names for every zone, repeating names for multiples. Examples:
-- Lightning Bolt|Counterspell|Island
-- Island|Island|Mountain|Goblin Guide|Snapcaster Mage
-
 Structured state details:
 - Your hand: {your_hand}
 - Opponent hand: {opponent_hand}
@@ -25,6 +21,9 @@ Structured state details:
 - Stack: {stack}
 - Life total: {life_total}
 - Opponent life total: {opponent_life_total}
+
+Retrieved Card Data & Rules:
+{card_context}
 
 Your task: extract the key facts from this battlefield state.
 List them clearly with separate sections for each zone:
@@ -59,6 +58,7 @@ Be precise. Do not give advice yet — only extract facts.
         stack=state["stack"],
         life_total=state["life_total"],
         opponent_life_total=state["opponent_life_total"],
+        card_context=state.get("card_context", "No card data retrieved."),
     )
 
 

@@ -2,7 +2,6 @@ import os
 from agent.state import AgentState
 from agent.prompts import observe_prompt, think_prompt, act_prompt, check_prompt
 from langchain_google_genai import ChatGoogleGenerativeAI
-from tools.rag import retrieve, format_card_context
 
 llm = ChatGoogleGenerativeAI(
     model=os.getenv("MODEL_NAME"),
@@ -18,17 +17,9 @@ def observe(state: AgentState) -> dict:
     observation = response.content
     print(f"\n[OBSERVE — iteration {state['iteration']}]\n{observation}")
 
-    # Fetch ground-truth card data based on battlefield description
-    cards = retrieve(state["your_battlefield"] + " " + state["opponent_battlefield"])
-    card_context = format_card_context(cards)
-    print(
-        f"\n[RAG — iteration {state['iteration']} ]\nRetrieved card context using an adaptive top_k based on the battlefield description."
-    )
-
     return {
         "observations": state["observations"] + [observation],
         "messages": [{"role": "assistant", "content": observation}],
-        "card_context": card_context,
     }
 
 
