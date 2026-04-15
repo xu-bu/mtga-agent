@@ -2,6 +2,7 @@ import os
 from typing import TypedDict
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
+
 # from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv()
@@ -9,6 +10,7 @@ load_dotenv()
 
 class MtgCard(TypedDict):
     """MTG card data structure from Qdrant."""
+
     name: str
     mana_cost: str
     cmc: float
@@ -27,6 +29,7 @@ class MtgCard(TypedDict):
     rarity: str
     power: str | None
     toughness: str | None
+
 
 # Config from env
 QDRANT_URL = os.getenv("QDRANT_URL")
@@ -55,49 +58,43 @@ qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
 #     return [h.payload for h in hits if h.payload is not None]
 
+
 def retrieve(cards: list[str]) -> list[MtgCard] | str:
     """Get exact card data by name using single Qdrant query."""
     if not cards:
         return "No cards specified."
-    
-    try:
-        # Use scroll API with multiple "should" conditions
-        points, _ = qdrant.scroll(
-            collection_name=QDRANT_COLLECTION,
-            scroll_filter={
-                "should": [
-                    {
-                        "key": "name",
-                        "match": {"value": card_name}
-                    }
-                    for card_name in cards
-                ]
-            },
-            limit=len(cards),
-            with_payload=True
-        )
-        
-        found_cards: list[MtgCard] = [
-            point.payload for point in points if point.payload
-        ]
-        
-        if not found_cards:
-            return "No cards found."
-            
-        return found_cards
-        
-    except Exception as e:
-        return f"Error retrieving cards: {e}"
+
+    # Use scroll API with multiple "should" conditions
+    points, _ = qdrant.scroll(
+        collection_name=QDRANT_COLLECTION,
+        scroll_filter={
+            "should": [
+                {"key": "name", "match": {"value": card_name}}
+                for card_name in cards
+            ]
+        },
+        limit=len(cards),
+        with_payload=True,
+    )
+
+    found_cards: list[MtgCard] = [
+        point.payload for point in points if point.payload
+    ]
+
+    if not found_cards:
+        return "No cards found."
+
+    return found_cards
 
 
 def format_card_context(cards: list[MtgCard] | str) -> str:
     """Format card data into a readable string for LLM prompts."""
     if isinstance(cards, str):
         return cards
-    
+
     if not cards:
         return "No card data retrieved."
-    
+
     lines = []
     for card in cards:
         card_info = f"**{card['name']}**"
@@ -108,10 +105,9 @@ def format_card_context(cards: list[MtgCard] | str) -> str:
         if card.get("power") and card.get("toughness"):
             card_info += f" | {card['power']}/{card['toughness']}"
         lines.append(card_info)
-        
+
         if card.get("oracle_text"):
             lines.append(f"  {card['oracle_text']}")
         lines.append("")
-    
+
     return "\n".join(lines)
-    

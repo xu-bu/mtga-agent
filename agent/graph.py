@@ -7,19 +7,19 @@ def build_graph():
 
     # Register nodes
     g.add_node("observe", observe)
-    g.add_node("think",   think)
-    g.add_node("act",     act)
-    g.add_node("check",   check)
+    g.add_node("think", think)
+    g.add_node("act", act)
+    g.add_node("check", check)
 
     # Linear flow within one iteration
     g.add_edge("observe", "think")
-    g.add_edge("think",   "act")
-    g.add_edge("act",     "check")
+    g.add_edge("think", "act")
+    g.add_edge("act", "check")
 
-    # Conditional: loop back or exit
+    # Conditional: loop back to think or exit
     g.add_conditional_edges(
         "check",
-        lambda state: END if state["done"] else "observe",
+        lambda state: END if state["done"] else "think",
     )
 
     g.set_entry_point("observe")

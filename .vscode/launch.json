@@ -5,19 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}"
         },
         {
-            "name": "Python Debugger: Current Module",
+            "name": "Module",
             "type": "debugpy",
             "request": "launch",
             "module": "${input:moduleName}",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "python": "${command:python.interpreterPath}"
         }
     ],
     "inputs": [

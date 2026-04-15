@@ -2,6 +2,7 @@ import os
 from agent.state import AgentState
 from agent.prompts import observe_prompt, think_prompt, act_prompt, check_prompt
 from langchain_google_genai import ChatGoogleGenerativeAI
+from constants import MAX_ITERATIONS
 
 llm = ChatGoogleGenerativeAI(
     model=os.getenv("MODEL_NAME"),
@@ -13,9 +14,15 @@ llm = ChatGoogleGenerativeAI(
 def observe(state: AgentState) -> dict:
     """Extract structured observations from the battlefield description."""
     prompt = observe_prompt(state)
-    response = llm.invoke([{"role": "user", "content": prompt}])
-    observation = response.content
-    print(f"\n[OBSERVE — iteration {state['iteration']}]\n{observation}")
+    print(f"\n[OBSERVE — iteration {state['iteration']}]\n")
+
+    observation = ""
+    for chunk in llm.stream([{"role": "user", "content": prompt}]):
+        content = chunk.content
+        if content:
+            print(content, end="", flush=True)
+            observation += content
+    print()  # New line after streaming
 
     return {
         "observations": state["observations"] + [observation],
@@ -27,9 +34,13 @@ def think(state: AgentState) -> dict:
     """Reason over the observations and produce a plan."""
     latest_obs = state["observations"][-1]
     prompt = think_prompt(state, latest_obs)
-    response = llm.invoke([{"role": "user", "content": prompt}])
-    thought = response.content
-    print(f"\n[THINK — iteration {state['iteration']}]\n{thought}")
+
+    thought = ""
+    for chunk in llm.stream([{"role": "user", "content": prompt}]):
+        content = chunk.content
+        if content:
+            thought += content
+
     return {
         "thoughts": state["thoughts"] + [thought],
         "messages": [{"role": "assistant", "content": thought}],
@@ -40,9 +51,13 @@ def act(state: AgentState) -> dict:
     """Decide on a concrete action based on current reasoning."""
     latest_thought = state["thoughts"][-1]
     prompt = act_prompt(state, latest_thought)
-    response = llm.invoke([{"role": "user", "content": prompt}])
-    action = response.content
-    print(f"\n[ACT — iteration {state['iteration']}]\n{action}")
+
+    action = ""
+    for chunk in llm.stream([{"role": "user", "content": prompt}]):
+        content = chunk.content
+        if content:
+            action += content
+
     return {
         "actions_taken": state["actions_taken"] + [action],
         "messages": [{"role": "assistant", "content": action}],
@@ -52,13 +67,11 @@ def act(state: AgentState) -> dict:
 def check(state: AgentState) -> dict:
     """Decide: are we done, or do we need another pass?"""
     latest_action = state["actions_taken"][-1]
-    MAX_ITERATIONS = 3
 
     if state["iteration"] >= MAX_ITERATIONS:
         # Force exit — safety limit
         done = True
         recommendation = latest_action
-        print(f"\n[CHECK] Max iterations reached. Forcing exit.")
     else:
         prompt = check_prompt(state, latest_action)
         response = llm.invoke([{"role": "user", "content": prompt}])
@@ -76,7 +89,6 @@ def check(state: AgentState) -> dict:
             )
         done = content_text.strip().lower().startswith("done")
         recommendation = latest_action if done else ""
-        print(f"\n[CHECK — iteration {state['iteration']}] done={done}")
 
     return {
         "done": done,
