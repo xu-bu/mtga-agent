@@ -1,8 +1,8 @@
 # MTGA Advisor
 
-A Magic: The Gathering Arena advisor using a LangGraph agent loop with exact card data retrieval via Qdrant.
+A Magic: The Gathering Arena advisor using a LangGraph multi-agent system with exact card data retrieval via Qdrant.
 
-The agent accepts a structured battlefield state, retrieves exact card data, observes the game state, reasons through possible plays, and returns a final recommendation.
+The system uses three specialized agents (Observer, Strategist, RuleMaster) that work in sequence to analyze battlefield state, retrieve exact card data, reason through possible plays, and return a final recommendation.
 
 ## Screenshots
 
@@ -12,25 +12,40 @@ The agent accepts a structured battlefield state, retrieves exact card data, obs
 
 - `main.py` — entrypoint that pre-fetches card data and runs the agent loop
 - `agent/state.py` — typed agent state definition with MTG zones
-- `agent/nodes.py` — observe / think / act / check node implementations with streaming
+- `agent/agents.py` — specialized agent classes (Observer, Strategist, RuleMaster)
+- `agent/nodes.py` — observe / think / act / check node implementations that delegate to agents
 - `agent/graph.py` — graph definition and loop wiring
-- `agent/prompts.py` — prompt templates for each node
+- `agent/prompts.py` — prompt templates for each agent with distinct personas
 - `tools/rag.py` — exact card data retrieval using Qdrant
 - `constants.py` — configuration constants (e.g., MAX_ITERATIONS)
 - `AGENTS.md` — detailed project and design documentation
 
 ## Architecture
 
-**Agent flow:**
+**Multi-agent flow:**
 
 ```
-observe (once) → think → act → check → (loop back to think if not done) → END
+Observer Agent → Strategist Agent (think + act) → RuleMaster Agent (check)
+                                                    ↓ (loop if not done)
+                                              Strategist Agent
+                                                    ↓
+                                              RuleMaster Agent
 ```
 
-- **observe**: Runs once to extract facts from battlefield state and retrieve card data
-- **think**: Reasons over observations and card data
-- **act**: Proposes concrete actions
-- **check**: Decides if recommendation is confident enough or needs another iteration
+**Specialized agents:**
+
+- **Observer Agent** (temperature=0): Precisely extracts structured facts from battlefield state with maximum accuracy. Runs once at the start.
+
+- **Strategist Agent** (temperature=0.3): Handles both strategic reasoning (think) and tactical action planning (act). Uses slightly higher temperature for creative strategic thinking while maintaining practicality.
+
+- **RuleMaster Agent** (temperature=0): Evaluates recommendations for completeness, rules compliance, and confidence. Ensures quality control before final output.
+
+**Agent responsibilities:**
+
+- **observe**: Extracts facts from battlefield state and card data (Observer Agent)
+- **think**: Reasons over observations and card data (Strategist Agent)
+- **act**: Proposes concrete tactical actions (Strategist Agent)
+- **check**: Decides if recommendation is confident, complete, and rules-compliant (RuleMaster Agent)
 
 **Card retrieval:**
 
@@ -77,4 +92,6 @@ Edit `constants.py` to adjust:
 
 - State uses lists for card zones (hand, battlefield, graveyard, exile)
 - Card data is retrieved via exact name matching, not semantic search
-- The agent is optimized for structured MTG game states with known card names
+- The system uses a Sequential Specialists multi-agent architecture with three specialized agents
+- Each agent has distinct temperature settings and personas optimized for their specific role
+- The system is optimized for structured MTG game states with known card names

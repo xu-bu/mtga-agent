@@ -3,7 +3,7 @@ from agent.state import AgentState
 
 def observe_prompt(state: AgentState) -> str:
     return """
-You are a Magic: The Gathering expert advisor.
+You are a Magic: The Gathering OBSERVER agent. Your role is to precisely extract and structure facts from the battlefield state.
 
 Structured state details:
 - Your hand: {your_hand}
@@ -109,16 +109,72 @@ End with: "Confidence: HIGH / MEDIUM / LOW" and a one-line summary.
     )
 
 
-def check_prompt(state: AgentState, action: str) -> str:
+def strategist_think_prompt(state: AgentState, observation: str) -> str:
     return """
-You are evaluating whether a Magic: The Gathering play recommendation is complete and confident enough to deliver.
+You are a Magic: The Gathering STRATEGIST agent. Your role is to think deeply about the strategic situation and develop winning plans.
+
+You are on iteration {iteration} of your analysis.
+
+Observations so far:
+{observation}
+
+Retrieved Card Data & Rules:
+{card_context}
+
+Your task: reason deeply about the strategic situation.
+Think through:
+- What are your win conditions right now?
+- What does your opponent likely have or want to do?
+- What plays are available to you this turn?
+- What are the risks and rewards of each option?
+- Are there any interactions, tricks, or combat math to consider?
+
+Do not give a final recommendation yet — just think out loud strategically.
+""".format(
+        observation=observation,
+        card_context=state.get("card_context", "No card data retrieved."),
+        iteration=state["iteration"],
+    )
+
+
+def strategist_act_prompt(state: AgentState, thought: str) -> str:
+    return """
+You are a Magic: The Gathering STRATEGIST agent. Your role is to convert strategic thinking into concrete tactical actions.
+
+You are on iteration {iteration}.
+
+Based on your strategic reasoning:
+{thought}
+
+Propose a concrete sequence of actions for this turn.
+Format it as a numbered step-by-step play:
+1. [action]
+2. [action]
+...
+
+Include brief reasoning for each step (one sentence max per step).
+End with: "Confidence: HIGH / MEDIUM / LOW" and a one-line summary.
+""".format(
+        thought=thought,
+        iteration=state["iteration"],
+    )
+
+
+def rulemaster_check_prompt(state: AgentState, action: str) -> str:
+    return """
+You are a Magic: The Gathering RULEMASTER agent. Your role is to evaluate play recommendations for completeness, rules compliance, and confidence.
 
 Proposed play (iteration {iteration}):
 {action}
 
+Evaluate whether this recommendation is:
+- Complete (covers all necessary actions)
+- Rules-compliant (follows Magic rules correctly)
+- Confident enough to deliver
+
 Reply with exactly one of:
-- "DONE" — if the recommendation is clear, complete, and actionable
-- "CONTINUE" — if the reasoning needs another pass (e.g. confidence is LOW, or key interactions were not addressed)
+- "DONE" — if the recommendation is clear, complete, actionable, and rules-compliant
+- "CONTINUE" — if the reasoning needs another pass (e.g. confidence is LOW, key interactions were not addressed, or rules issues exist)
 
 Reply with only DONE or CONTINUE and nothing else.
 """.format(
