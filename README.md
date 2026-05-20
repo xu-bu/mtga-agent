@@ -11,7 +11,7 @@ The agent accepts a battlefield description, extracts key game state facts, reas
 - `agent/nodes.py` — observe / think / act / check node implementations
 - `agent/graph.py` — graph definition and loop wiring
 - `agent/prompts.py` — prompt templates for each node
-- `tools/rag.py` — placeholder for card data retrieval
+- `tools/rag.py` — helper for retrieving MTG card data from a Qdrant vector store
 - `AGENTS.md` — project and design documentation
 
 ## Setup
@@ -23,10 +23,13 @@ The agent accepts a battlefield description, extracts key game state facts, reas
 pip install -r requirements.txt
 ```
 
-3. Add your model API key to a `.env` file:
+3. Add your model API key and Qdrant settings to a `.env` file:
 
 ```bash
 echo "MODEL_API_KEY=your_api_key_here" > .env
+echo "QDRANT_URL=https://your-qdrant-host" >> .env
+echo "QDRANT_API_KEY=your_qdrant_api_key" >> .env
+echo "QDRANT_COLLECTION=mtg_cards" >> .env
 ```
 
 ## Run
@@ -39,4 +42,4 @@ python main.py
 
 - The agent currently uses a raw battlefield description plus structured state fields.
 - `agent/state.py` models detailed MTG zones such as hand, battlefield, graveyard, exile, and mana pools.
-- The code is intended as a starting point for later integration with RAG tools and live card lookup.
+- `tools/rag.py` can retrieve MTG card data from a Qdrant store and format it for LLM prompts.
